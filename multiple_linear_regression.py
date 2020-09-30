@@ -1,68 +1,76 @@
-# Multiple Linear Regression
+# Imporitng libraries
 
 import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
+import tensorflow as tf
+import sys
 
-# Importing the datasets
+# creating the regression class
+class Linear_regression:
+	
+	def __init__(self,train_data,train_label,epochs=1000,alpha=0.1):
+		self.train_data = self.feature_normalization(train_data)
+		self.new_train_data = np.insert(self.train_data,0,1,axis=1)
+		self.train_label = train_label
+		self.weights = np.zeros((self.new_train_data.shape[1],1))
+		self.epochs = epochs
+		self.alpha = alpha	
 
-datasets = pd.read_csv('50_Startups.csv')
-X = datasets.iloc[:, :-1].values
-Y = datasets.iloc[:, 4].values
+  # The hypothesis     
+  
+	def hypothesis(self):		
+		return np.dot(self.new_train_data,self.weights)	
+	
+  # Function to calculate error   
+  
+	def cost(self,predicted,labels):
+		return (1/(2*np.size(labels)))*np.sum((predicted-labels)**2)		
+	
+#   function to get the gradient
+  
+	def derivative(self):
+		gradient = (1/np.size(self.train_label))*np.dot(self.new_train_data.T,(self.hypothesis()-self.train_label))
+		return gradient
 
-# Encoding categorical data
+	def train(self):
+		self.cost_vals = []
+		m = len(self.train_label)
+		for i in range(self.epochs):
+			loss = self.cost(self.hypothesis(),self.train_label)						
+			self.weights = self.weights - (self.alpha)*self.derivative()							
+			self.cost_vals.append(loss)
+			print('\r loss: {} %'.format(loss),end=' ')
+			sys.stdout.flush()		
 
-# Encoding the Independent Variable
+		print('\n')	
+		plt.plot(self.cost_vals)
+		plt.xlabel('Iterations')
+		plt.ylabel('Cost')
+		plt.show()
+		return self.weights,self.cost_vals
 
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder
-labelencoder_X = LabelEncoder()
-X[:, 3] = labelencoder_X.fit_transform(X[:, 3])
-onehotencoder = OneHotEncoder(categorical_features = [3])
-X = onehotencoder.fit_transform(X).toarray()
+	def predict(self,data,labels):
+		data = np.insert(data,0,1,axis=1)
+		predicted = np.dot(data,self.weights)
+		cost_total = self.cost(predicted,labels)
+		return predicted,cost_total
+		
+	def feature_normalization(self,data):
+		new_data = (data-np.mean(data))/np.std(data)
+		return new_data	
 
-# Avoiding the Dummy Variable Trap
-X = X[:, 1:]
+if __name__ == '__main__':
+  
+  # Reading data and applying Multiple linear regression algorithm.   
+	data = pd.read_csv("50_Startups.csv",sep=',',header=None)
+	train_data = np.array(data.iloc[1:,:3])
+	train_data = train_data.astype(np.float)
 
-# Splitting the dataset into the Training set and Test set
+	train_label = np.array(data.iloc[1:,4]).reshape(-1,1)
+	train_label = train_label.astype(np.float)
 
-from sklearn.model_selection import train_test_split
-X_Train, X_Test, Y_Train, Y_Test = train_test_split(X, Y, test_size = 0.2, random_state = 0)
-
-# Fitting the Multiple Linear Regression in the Training set
-
-from sklearn.linear_model import LinearRegression
-regressor = LinearRegression()
-regressor.fit(X_Train, Y_Train)
-
-# Predicting the Test set results
-
-Y_Pred = regressor.predict(X_Test)
-
-# Building the optimal model using Backward Elimination
-
-import statsmodels.formula.api as sm
-X = np.append(arr = np.ones((50, 1)).astype(int), values = X, axis = 1)
-
-X_Optimal = X[:, [0,1,2,3,4,5]]
-regressor_OLS = sm.OLS(endog = Y, exog = X_Optimal).fit()
-regressor_OLS.summary()
-
-X_Optimal = X[:, [0,1,2,4,5]]
-regressor_OLS = sm.OLS(endog = Y, exog = X_Optimal).fit()
-regressor_OLS.summary()
-
-X_Optimal = X[:, [0,1,4,5]]
-regressor_OLS = sm.OLS(endog = Y, exog = X_Optimal).fit()
-regressor_OLS.summary()
-
-X_Optimal = X[:, [0,1,4]]
-regressor_OLS = sm.OLS(endog = Y, exog = X_Optimal).fit()
-regressor_OLS.summary()
-
-# Fitting the Multiple Linear Regression in the Optimal Training set
-
-X_Optimal_Train, X_Optimal_Test = train_test_split(X_Optimal,test_size = 0.2, random_state = 0)
-regressor.fit(X_Optimal_Train, Y_Train)
-
-# Predicting the Optimal Test set results
-
-Y_Optimal_Pred = regressor.predict(X_Optimal_Test)
+	gd = Linear_regression(train_data,train_label,epochs=100000,alpha=0.1)
+	r = gd.train()
+	print(r[0])
+	print('-------------')
